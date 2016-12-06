@@ -1,5 +1,6 @@
 package com.sdsmdg.harjot.digitrecognition;
 
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.database.Cursor;
 import android.graphics.Bitmap;
@@ -22,17 +23,25 @@ import com.loopj.android.http.RequestParams;
 import com.loopj.android.http.SyncHttpClient;
 import com.loopj.android.http.TextHttpResponseHandler;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import cz.msebera.android.httpclient.Header;
 import cz.msebera.android.httpclient.HttpEntity;
 import cz.msebera.android.httpclient.HttpResponse;
+import cz.msebera.android.httpclient.client.ClientProtocolException;
 import cz.msebera.android.httpclient.client.HttpClient;
+import cz.msebera.android.httpclient.client.methods.HttpGet;
 import cz.msebera.android.httpclient.client.methods.HttpPost;
+import cz.msebera.android.httpclient.entity.BufferedHttpEntity;
 import cz.msebera.android.httpclient.entity.mime.HttpMultipartMode;
 import cz.msebera.android.httpclient.entity.mime.MultipartEntityBuilder;
 import cz.msebera.android.httpclient.entity.mime.content.FileBody;
@@ -49,6 +58,10 @@ public class MainActivity extends AppCompatActivity {
 
     HttpClient httpclient;
     HttpPost httppost;
+
+    Timer t;
+
+    ProgressDialog progressDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -78,6 +91,10 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 httppost = new HttpPost(urlText.getText().toString());
+                progressDialog = new ProgressDialog(MainActivity.this);
+                progressDialog.setMessage("Sending");
+                progressDialog.setCancelable(false);
+                progressDialog.show();
                 new Post().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
 //                if (imageFile != null) {
 //                    try {
@@ -136,6 +153,37 @@ public class MainActivity extends AppCompatActivity {
                     byte[] byteData = data.getByteArrayExtra("data");
                     Bitmap bmp = BitmapFactory.decodeByteArray(byteData, 0, byteData.length);
                     selectedImage.setImageBitmap(bmp);
+
+                    imageFile = new File(MainActivity.this.getCacheDir(), "temp");
+                    try {
+                        imageFile.createNewFile();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+
+                    Bitmap bitmap = bmp;
+                    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 0 /*ignored for PNG*/, bos);
+                    byte[] bitmapdata = bos.toByteArray();
+
+                    FileOutputStream fos = null;
+                    try {
+                        fos = new FileOutputStream(imageFile);
+                        fos.write(bitmapdata);
+                        fos.flush();
+                        fos.close();
+                    } catch (FileNotFoundException e) {
+                        e.printStackTrace();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+
+                    if (imageFile.exists()) {
+                        Toast.makeText(MainActivity.this, "Yes", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(MainActivity.this, "NO", Toast.LENGTH_SHORT).show();
+                    }
+
                 }
             }
         }
@@ -185,7 +233,23 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected void onPostExecute(Void aVoid) {
             super.onPostExecute(aVoid);
+            progressDialog.dismiss();
+            getImage(urlText.getText().toString());
         }
+    }
+
+    public void getImage(final String url) {
+        t = new Timer();
+        progressDialog = new ProgressDialog(MainActivity.this);
+        progressDialog.setMessage("working");
+        progressDialog.setCancelable(false);
+        progressDialog.show();
+        t.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                getImageFromUrl(url + "/temp_1.jpg");
+            }
+        }, 0, 3000);
     }
 
     public String getPath(Uri uri) {
@@ -197,4 +261,47 @@ public class MainActivity extends AppCompatActivity {
         return cursor.getString(column_index);
     }
 
+    public void getImageFromUrl(String url) {
+        Bitmap bmp = null;
+        HttpGet get = new HttpGet(url);
+        HttpResponse getResponse = null;
+        try {
+            getResponse = httpclient.execute(get);
+        } catch (ClientProtocolException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        String entityContents = "";
+        HttpEntity responseEntity = getResponse.getEntity();
+        BufferedHttpEntity httpEntity = null;
+        try {
+            httpEntity = new BufferedHttpEntity(responseEntity);
+        } catch (IOException e1) {
+            // TODO Auto-generated catch block
+            e1.printStackTrace();
+        }
+        InputStream imageStream = null;
+        try {
+            imageStream = httpEntity.getContent();
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        bmp = BitmapFactory.decodeStream(imageStream);
+
+        if (bmp != null) {
+            t.cancel();
+            progressDialog.dismiss();
+            final Bitmap finalBmp = bmp;
+            MainActivity.this.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    selectedImage.setImageBitmap(finalBmp);
+                }
+            });
+        }
+    }
 }
