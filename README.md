@@ -15,3 +15,18 @@ Android digit classifier that works with a python http server
              ^                          |     ^                       |     ^                             |
              |__________________________|     |_______________________|     |_____________________________|
                       GET image                         Forward                      Write final image
+
+# Screens
+
+## python server
+ ![python_server](/screenshots/python_server.PNG)
+ 
+## ngrok server
+ ![ngrok_server](/screenshots/ngrok_server.PNG)
+ 
+## App
+ <img src = "/screenshots/app_1.jpg" width = "200"> --SELECT-->
+ <img src = "/screenshots/app_2.jpg" width = "200"> --SEND-->
+ <img src = "/screenshots/app_3.jpg" width = "200">
+ 
+ 
