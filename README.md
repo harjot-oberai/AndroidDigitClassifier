@@ -1,7 +1,7 @@
 # AndroidDigitClassifier
 Android digit classifier that works with a python http server
 
-# Steps to get it working
+# Working Steps
 1. Clone the repo, import project in android studio, build and run on your phone or emulator.
 2. Open `pythonScripts` folder and run `server.py` by using command `python server.py PORT_NUMBER`. Replace `PORT_NUMBER` by some feasible port number, say `8800`.
 3. run `ngrok.exe` and use command `ngrok http PORT_NUMBER`. Replace `PORT_NUMBER` by same port number used in step 2.
